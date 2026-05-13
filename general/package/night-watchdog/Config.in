@@ -2,5 +2,5 @@ config BR2_PACKAGE_NIGHT_WATCHDOG
 	bool "night-watchdog"
 	default n
 	help
-	  A script that monitors day/night status and restarts
-	  the video stream if needed.
+	  Night watchdog script and init service.
+	  Installs /usr/bin/night_watchdog.sh and /etc/init.d/S99night.
