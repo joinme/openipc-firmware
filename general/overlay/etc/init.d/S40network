@@ -13,16 +13,31 @@ set_wireless() {
 		ifup usb0
 		ifup eth1
 	fi
-	[ -e /sys/class/net/eth0 ] && ifconfig eth0 "${net:-192.168.2.10}" hw ether "${eth:-00:00:23:34:45:66}" up
+	# [ -e /sys/class/net/eth0 ] && ifconfig eth0 "${net:-192.168.2.10}" hw ether "${eth:-00:00:23:34:45:66}" up
 }
 
 start() {
 	echo "Starting network..."
 	ifup lo
-	if [ -n "$dev" ]; then
-		set_wireless
-	else
+
+	# 1. 先拉起有线
+	if [ -e /sys/class/net/eth0 ]; then
 		ifup eth0
+	fi
+
+	# 2. 如果配置了无线，判断是否需要拉起
+	if [ -n "$dev" ]; then
+		# 稍等 1 秒，让物理层去检测网线是否插着
+		sleep 1
+		# 读取网口载波状态：1表示插着网线，0表示没插
+		carrier=$(cat /sys/class/net/eth0/carrier 2>/dev/null)
+
+		if [ "$carrier" != "1" ]; then
+						echo "Ethernet link down, starting wireless..."
+						set_wireless
+		else
+						echo "Ethernet link up, skipping wireless."
+		fi
 	fi
 }
 
