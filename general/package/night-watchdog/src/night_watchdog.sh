@@ -1,8 +1,36 @@
 #!/bin/sh
 
+# ===== 阈值参数（可通过命令行参数传入） =====
+# 默认值
+DEFAULT_MAX_GAIN=8192
+DEFAULT_MIN_GAIN=2048
+
+MAX_GAIN=$DEFAULT_MAX_GAIN
+MIN_GAIN=$DEFAULT_MIN_GAIN
+
+# 参数处理
+if [ $# -eq 0 ]; then
+    
+elif [ $# -eq 2 ]; then
+    # 比较两个参数大小，大的给 MAX_GAIN，小的给 MIN_GAIN
+    if [ $1 -gt $2 ]; then
+        MAX_GAIN=$1
+        MIN_GAIN=$2
+    else
+        MAX_GAIN=$2
+        MIN_GAIN=$1
+    fi
+else
+    echo "Usage: $0 [MAX_GAIN MIN_GAIN]" >&2
+    echo "  When no arguments, defaults: MAX_GAIN=$DEFAULT_MAX_GAIN, MIN_GAIN=$DEFAULT_MIN_GAIN" >&2
+    exit 1
+fi
+
+
+
 # ===== 阈值参数（请根据日志输出的真实数据修改这里！）=====
-MAX_GAIN=8192      # 高于此值视为夜
-MIN_GAIN=2048      # 低于此值视为昼
+# MAX_GAIN=8192      # 高于此值视为夜
+# MIN_GAIN=2048      # 低于此值视为昼
 INTERVAL=5        # 轮询间隔（秒）
 
 #TMP_METRICS="/tmp/.metrics_cache"
