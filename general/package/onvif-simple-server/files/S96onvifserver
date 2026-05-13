@@ -16,7 +16,9 @@ start() {
 	network_interface=$(ip route | awk '/default/ {print $5}' | head -n1)
 	network_macaddr=$(cat /sys/class/net/${network_interface}/address | sed 's/://g')
 	soc=$(ipcinfo --chip-name)
-
+  if [ "$soc" = "ssc33x" ]; then                                     
+		fw_setenv gpio_motors "44 45 46 47 0 0 0 0"                      
+	fi  
 	sed -i "s/^firmware_ver=.*/firmware_ver=$fw_version/" $ONVIF_CONFIG
 	sed -i "s/^hardware_id=.*/hardware_id=$soc/" $ONVIF_CONFIG
 	sed -i "s/^serial_num=.*/serial_num=$network_macaddr/" $ONVIF_CONFIG
