@@ -7,6 +7,7 @@ ONVIF_PORT=$(awk -F= '/^port=/{print $2}' ${ONVIF_CONFIG})
 DAEMON="httpd"
 PIDFILE="/var/run/httpd_onvif.pid"
 DAEMON_ARGS="-p $ONVIF_PORT -h $WWW_PATH -c $HTTPD_CONFIG -f"
+WSD_PIDFILE="/var/run/wsd_simple_server.pid"
 
 start() {
 	echo -n "Starting ONVIF HTTPD server: "
@@ -24,6 +25,9 @@ start() {
 
 	start-stop-daemon -b -m -S -q -p "$PIDFILE" -x "$DAEMON" -- $DAEMON_ARGS
 	if [ $? -eq 0 ]; then
+		echo "OK"
+		echo -n "Starting ONVIF wsd_simple_server: "
+		wsd_simple_server -i "$network_interface" -x "http://%s:$ONVIF_PORT/onvif/device_service" -p "$WSD_PIDFILE"
 		echo "OK"
 	else
 		echo "FAIL"
