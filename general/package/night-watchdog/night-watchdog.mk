@@ -5,7 +5,7 @@
 ################################################################################
 
 NIGHT_WATCHDOG_VERSION = 1.0
-NIGHT_WATCHDOG_SITE = $(BR2_EXTERNAL)/general/package/night-watchdog/src
+NIGHT_WATCHDOG_SITE = $(BR2_EXTERNAL)/package/night-watchdog/src
 NIGHT_WATCHDOG_SITE_METHOD = local
 NIGHT_WATCHDOG_LICENSE = GPL-2.0+
 
