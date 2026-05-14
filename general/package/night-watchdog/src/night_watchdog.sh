@@ -9,22 +9,20 @@ MAX_GAIN=$DEFAULT_MAX_GAIN
 MIN_GAIN=$DEFAULT_MIN_GAIN
 
 # 参数处理
-if [ $# -eq 0 ]; then
-    
-elif [ $# -eq 2 ]; then
+if [ $# -eq 2 ]; then
     # 比较两个参数大小，大的给 MAX_GAIN，小的给 MIN_GAIN
-    if [ $1 -gt $2 ]; then
-        MAX_GAIN=$1
-        MIN_GAIN=$2
-    else
+    if [ $1 -gt $2 ]; then                                              
+        MAX_GAIN=$1                                                     
+        MIN_GAIN=$2       
+    else           
         MAX_GAIN=$2
         MIN_GAIN=$1
-    fi
-else
+    fi             
+elif [ $# -ne 0 ]; then
     echo "Usage: $0 [MAX_GAIN MIN_GAIN]" >&2
     echo "  When no arguments, defaults: MAX_GAIN=$DEFAULT_MAX_GAIN, MIN_GAIN=$DEFAULT_MIN_GAIN" >&2
-    exit 1
-fi
+    exit 1                                                                                          
+fi 
 
 
 
