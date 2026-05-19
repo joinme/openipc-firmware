@@ -48,7 +48,7 @@ while true; do
 
     # 3. 数据有效性检查（如果 majestic 没起起来，这里会是空）
     if [ -z "$GAIN" ] || [ -z "$STATE" ]; then
-        echo "[Watchdog] Waiting for Majestic ISP data..."
+        # echo "[Watchdog] Waiting for Majestic ISP data..."
         sleep "$INTERVAL"
         continue
     fi
