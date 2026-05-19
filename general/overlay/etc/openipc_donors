@@ -3,6 +3,7 @@
 
  注意：
 	1. 固件刷完第一次启动后，请设置无线或者有线，然后重启，之后onvif服务才会生效。
-  2. 如果有线和无线同时连接的话，默认只启动有线连接，onvif服务所用的ip也是有线的ip。如需开启无线shell中执行 ifup wlan0
+  2. 如果有线和无线同时连接的话，默认只启用有线连接，onvif服务所用的ip也是有线的ip。
+  3. 如需开启无线，shell中执行 ifup wlan0
 
  More info about openipc, Please visit https://openipc.org/
