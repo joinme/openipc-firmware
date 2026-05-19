@@ -6,71 +6,100 @@ WWW_PATH="/var/www"
 ONVIF_PORT=$(awk -F= '/^port=/{print $2}' ${ONVIF_CONFIG})
 DAEMON="httpd"
 PIDFILE="/var/run/httpd_onvif.pid"
-DAEMON_ARGS="-p $ONVIF_PORT -h $WWW_PATH -c $HTTPD_CONFIG -f"
 WSD_PIDFILE="/var/run/wsd_simple_server.pid"
+SENTINEL_PIDFILE="/var/run/onvif_sentinel.pid"
+
+start_onvif_services() {
+    echo "ONVIF: Network ready, starting services..."
+    fw_version="OpenIPC $(grep "OPENIPC_VERSION" /etc/os-release | cut -d= -f2 | tr -d '"')"
+    network_interface="$1"
+    network_macaddr=$(cat /sys/class/net/${network_interface}/address | sed 's/://g')
+    soc=$(ipcinfo --chip-name)
+    if [ "$soc" = "ssc33x" ]; then
+        fw_setenv gpio_motors "44 45 46 47 52 16"
+    fi
+    sed -i "s/^firmware_ver=.*/firmware_ver=$fw_version/" $ONVIF_CONFIG
+    sed -i "s/^hardware_id=.*/hardware_id=$soc/" $ONVIF_CONFIG
+    sed -i "s/^serial_num=.*/serial_num=$network_macaddr/" $ONVIF_CONFIG
+    sed -i "s/^ifs=.*/ifs=$network_interface/" $ONVIF_CONFIG
+    echo -e "A:*\n/cgi-bin*:*\n" > $HTTPD_CONFIG
+
+    start-stop-daemon -b -m -S -q -p "$PIDFILE" -x "$DAEMON" -- -p $ONVIF_PORT -h $WWW_PATH -c $HTTPD_CONFIG -f
+    if [ $? -eq 0 ]; then
+        echo "ONVIF HTTPD started"
+        wsd_simple_server -i "$network_interface" -x "http://%s:$ONVIF_PORT/onvif/device_service" -p "$WSD_PIDFILE"
+        echo "ONVIF wsd_simple_server started"
+    else
+        echo "ERROR: Failed to start ONVIF HTTPD"
+    fi
+}
 
 start() {
-	echo -n "Starting ONVIF HTTPD server: "
+    echo -n "Starting ONVIF sentinel: "
 
-	# 每 5 秒检查一次，直到获取到默认路由接口
-	while true; do
-			network_interface=$(ip route | awk '/default/ {print $5}' | head -n1)
-			if [ -n "$network_interface" ]; then
-					break
-			fi
-			# echo "Waiting for network interface..."
-			sleep 5
-	done
-	
-	# network_interface=$(ip route | awk '/default/ {print $5}' | head -n1)
-	fw_version="OpenIPC $(grep "OPENIPC_VERSION" /etc/os-release | cut -d= -f2 | tr -d '"')"
-	network_macaddr=$(cat /sys/class/net/${network_interface}/address | sed 's/://g')
-	soc=$(ipcinfo --chip-name)
-  if [ "$soc" = "ssc33x" ]; then                                     
-		# fw_setenv gpio_motors "44 45 46 47 0 0 0 0"
-		fw_setenv gpio_motors "44 45 46 47 52 16"
-	fi  
-	sed -i "s/^firmware_ver=.*/firmware_ver=$fw_version/" $ONVIF_CONFIG
-	sed -i "s/^hardware_id=.*/hardware_id=$soc/" $ONVIF_CONFIG
-	sed -i "s/^serial_num=.*/serial_num=$network_macaddr/" $ONVIF_CONFIG
-	sed -i "s/^ifs=.*/ifs=$network_interface/" $ONVIF_CONFIG
-	echo -e "A:*\n/cgi-bin*:*\n" > $HTTPD_CONFIG
+    # 如果已经有一个哨兵在运行，先停掉
+    if [ -f "$SENTINEL_PIDFILE" ]; then
+        kill -9 $(cat "$SENTINEL_PIDFILE") 2>/dev/null
+        rm -f "$SENTINEL_PIDFILE"
+    fi
 
-	start-stop-daemon -b -m -S -q -p "$PIDFILE" -x "$DAEMON" -- $DAEMON_ARGS
-	if [ $? -eq 0 ]; then
-		echo "OK"
-		echo -n "Starting ONVIF wsd_simple_server: "
-		wsd_simple_server -i "$network_interface" -x "http://%s:$ONVIF_PORT/onvif/device_service" -p "$WSD_PIDFILE"
-		echo "OK"
-	else
-		echo "FAIL"
-	fi
+    # 启动后台哨兵进程
+    (
+        # 最多等待 120 秒（可根据需要调整）
+        MAX_WAIT=120
+        waited=0
+        while [ $waited -lt $MAX_WAIT ]; do
+            # 获取默认路由接口
+            iface=$(ip route | awk '/default/ {print $5}' | head -n1)
+            if [ -n "$iface" ] && pidof majestic >/dev/null 2>&1; then
+                start_onvif_services "$iface"
+                exit 0
+            fi
+            sleep 5
+            waited=$((waited + 5))
+        done
+        echo "ONVIF sentinel: timeout, no network or majestic, giving up." | logger -t onvif
+    ) &
+
+    # 记录哨兵 PID 以便管理
+    echo $! > "$SENTINEL_PIDFILE"
+    echo "OK"
 }
 
 stop() {
-	echo -n "Stopping ONVIF HTTPD server: "
-	start-stop-daemon -K -q -p "$PIDFILE"
-	if [ $? -eq 0 ]; then
-		rm -f "$PIDFILE"
-		echo "OK"
-	else
-		echo "FAIL"
-	fi
+    echo -n "Stopping ONVIF services: "
+    # 杀死哨兵
+    if [ -f "$SENTINEL_PIDFILE" ]; then
+        kill $(cat "$SENTINEL_PIDFILE") 2>/dev/null
+        rm -f "$SENTINEL_PIDFILE"
+    fi
+    # 停止 HTTPD
+    if [ -f "$PIDFILE" ]; then
+        start-stop-daemon -K -q -p "$PIDFILE"
+        rm -f "$PIDFILE"
+    fi
+    # 停止 wsd_simple_server
+    if [ -f "$WSD_PIDFILE" ]; then
+        kill $(cat "$WSD_PIDFILE") 2>/dev/null
+        rm -f "$WSD_PIDFILE"
+    fi
+    echo "OK"
 }
 
 case "$1" in
-	start|stop)
-		$1
-		;;
-
-	restart)
-		stop
-		sleep 3
-		start
-		;;
-
-	*)
-		echo "Usage: $0 {start|stop|restart}"
-		exit 1
-		;;
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        sleep 3
+        start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
 esac
