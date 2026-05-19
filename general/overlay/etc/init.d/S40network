@@ -36,11 +36,11 @@ start() {
 	# 2. 如果配置了无线，加载驱动
 	if [ -n "$dev" ]; then
 		sleep 1
-		carrier=$(cat /sys/class/net/eth0/carrier 2>/dev/null)
 
 		echo "Loading wireless driver for $dev..."
 		load_wireless_driver
 
+		carrier=$(cat /sys/class/net/eth0/carrier 2>/dev/null)
 		if [ "$carrier" != "1" ]; then
 			echo "Ethernet link down, starting wireless interface..."
 			start_wireless_interface
