@@ -45,7 +45,7 @@ start() {
 
     # 启动后台哨兵进程
     (
-        # 最多等待 120 秒（可根据需要调整）
+        # 最多等待 180 秒（可根据需要调整）
         MAX_WAIT=120
         waited=0
         while [ $waited -lt $MAX_WAIT ]; do
@@ -83,7 +83,7 @@ stop() {
         kill $(cat "$WSD_PIDFILE") 2>/dev/null
         rm -f "$WSD_PIDFILE"
     fi
-    echo "OK"
+    
 }
 
 case "$1" in
