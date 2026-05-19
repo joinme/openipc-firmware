@@ -12,8 +12,18 @@ WSD_PIDFILE="/var/run/wsd_simple_server.pid"
 start() {
 	echo -n "Starting ONVIF HTTPD server: "
 
+	# 每 5 秒检查一次，直到获取到默认路由接口
+	while true; do
+			network_interface=$(ip route | awk '/default/ {print $5}' | head -n1)
+			if [ -n "$network_interface" ]; then
+					break
+			fi
+			# echo "Waiting for network interface..."
+			sleep 5
+	done
+	
+	# network_interface=$(ip route | awk '/default/ {print $5}' | head -n1)
 	fw_version="OpenIPC $(grep "OPENIPC_VERSION" /etc/os-release | cut -d= -f2 | tr -d '"')"
-	network_interface=$(ip route | awk '/default/ {print $5}' | head -n1)
 	network_macaddr=$(cat /sys/class/net/${network_interface}/address | sed 's/://g')
 	soc=$(ipcinfo --chip-name)
   if [ "$soc" = "ssc33x" ]; then                                     
