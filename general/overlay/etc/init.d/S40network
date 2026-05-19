@@ -4,16 +4,24 @@ mac=$(fw_printenv -n wlanmac)
 net=$(fw_printenv -n netaddr_fallback)
 eth=$(fw_printenv -n ethaddr)
 
-set_wireless() {
+load_wireless_driver() {
 	path=/etc/wireless
 	if $path/usb "$dev" || $path/sdio "$dev"; then
 		[ -n "$mac" ] && ip link set dev wlan0 address "$mac"
-		ifup wlan0
+		return 0
 	elif $path/modem "$dev"; then
+		return 1
+	fi
+	return 1
+}
+
+start_wireless_interface() {
+	if [ -e /sys/class/net/wlan0 ]; then
+		ifup wlan0
+	elif [ -e /sys/class/net/usb0 ]; then
 		ifup usb0
 		ifup eth1
 	fi
-	# [ -e /sys/class/net/eth0 ] && ifconfig eth0 "${net:-192.168.2.10}" hw ether "${eth:-00:00:23:34:45:66}" up
 }
 
 start() {
@@ -25,18 +33,19 @@ start() {
 		ifup eth0
 	fi
 
-	# 2. 如果配置了无线，判断是否需要拉起
+	# 2. 如果配置了无线，加载驱动
 	if [ -n "$dev" ]; then
-		# 稍等 1 秒，让物理层去检测网线是否插着
 		sleep 1
-		# 读取网口载波状态：1表示插着网线，0表示没插
 		carrier=$(cat /sys/class/net/eth0/carrier 2>/dev/null)
 
+		echo "Loading wireless driver for $dev..."
+		load_wireless_driver
+
 		if [ "$carrier" != "1" ]; then
-						echo "Ethernet link down, starting wireless..."
-						set_wireless
+			echo "Ethernet link down, starting wireless interface..."
+			start_wireless_interface
 		else
-						echo "Ethernet link up, skipping wireless."
+			echo "Ethernet link up, skipping wireless interface activation."
 		fi
 	fi
 }
@@ -54,12 +63,10 @@ case "$1" in
 	start|stop)
 		$1
 		;;
-
 	restart|reload)
 		stop
 		start
 		;;
-
 	*)
 		echo "Usage: $0 {start|stop|restart|reload}"
 		exit 1
