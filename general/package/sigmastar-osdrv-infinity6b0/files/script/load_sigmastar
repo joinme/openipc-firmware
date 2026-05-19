@@ -8,11 +8,37 @@ SENSOR=$(fw_printenv -n sensor)
 
 detect_sensor() {
 	insmod $MODULE/sensor_config.ko
-	if [ -e /dev/srcfg ]; then
-		echo srcfg 0 1 0 0 0 0 > /dev/srcfg
-		rmmod sensor_config
+	retries=0
+	while [ $retries -lt 10 ]; do
+		if [ -e /dev/srcfg ]; then
+			echo srcfg 0 1 0 0 0 0 > /dev/srcfg
+			sleep 1
+			SENSOR=$(ipcinfo -s)
+			if [ -n "$SENSOR" ]; then
+				break
+			fi
+		fi
+		sleep 1
+		retries=$((retries + 1))
+	done
+	rmmod sensor_config 2>/dev/null
+	if [ -z "$SENSOR" ]; then
+    echo "Sensor auto-detection failed, trying to find any sensor driver..." | logger -s -t OpenIPC
+    # 在模块目录下查找 sensor_*_mipi.ko 文件，提取传感器名
+    for ko in $MODULE/sensor_*_mipi.ko; do
+        if [ -f "$ko" ]; then
+            # 去掉路径和前后缀，得到类似 jxq03 的字符串
+            SENSOR=$(basename "$ko" | sed 's/^sensor_\(.*\)_mipi\.ko$/\1/')
+            break
+        fi
+    done
+    if [ -z "$SENSOR" ]; then
+        echo "No sensor driver found! Giving up." | logger -s -t OpenIPC
+        exit 1
+    else
+        echo "Using sensor from driver file: $SENSOR" | logger -s -t OpenIPC
+    fi
 	fi
-	SENSOR=$(ipcinfo -s)
 	fw_setenv sensor "$SENSOR"
 }
 
