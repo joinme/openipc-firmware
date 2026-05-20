@@ -15,7 +15,7 @@ define NIGHT_WATCHDOG_INSTALL_TARGET_CMDS
 	# 安装启动脚本到 /etc/init.d
 	$(INSTALL) -D -m 0755 $(@D)/S99night $(TARGET_DIR)/etc/init.d/S99night
   # 安装脚本到 /usr/bin
-	$(INSTALL) -D -m 0755 $(@D)/night_watchdog.sh $(TARGET_DIR)/usr/bin/append-ptz.sh
+	$(INSTALL) -D -m 0755 $(@D)/night_watchdog.sh $(TARGET_DIR)/etc/append-ptz.sh
 	# 安装启动脚本到 /etc/init.d
 	$(INSTALL) -D -m 0755 $(@D)/S99night $(TARGET_DIR)/etc/init.d/S90ptz
 endef
