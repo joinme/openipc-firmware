@@ -1,5 +1,5 @@
 #!/bin/sh
-/bin/sh /usr/bin/append-ptz.sh
+/bin/sh /etc/append-ptz.sh
 # 运行后删除自身，确保只在首次启动时执行
 rm -f /etc/init.d/S94ptz
-rm -f /usr/bin/append-ptz.sh
+rm -f /etc/append-ptz.sh
