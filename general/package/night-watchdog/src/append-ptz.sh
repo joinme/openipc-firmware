@@ -15,4 +15,19 @@ if [ -f /etc/majestic.yaml ]; then
     if ! grep -q "^ptz:" /etc/majestic.yaml; then
         echo "$PTZ_CONFIG" >> /etc/majestic.yaml
     fi
+    # 用 sed 修改
+	sed -i '
+	  # ===== OSD 段 =====
+	  /^osd:/,/^[a-z]/ {
+	      s/^\([[:space:]]*\)enabled:[[:space:]]*false/\1enabled: true/
+	  }
+	
+	  # ===== Audio 段 =====
+	  /^audio:/,/^[a-z]/ {
+	      # 启用音频
+	      s/^\([[:space:]]*\)enabled:[[:space:]]*false/\1enabled: true/
+	      # 在 speakerPin: 15 之后插入 speakerPinInvert: false
+	      /^[[:space:]]*speakerPin:[[:space:]]*15$/a\  speakerPinInvert: false
+	  }
+	' /etc/majestic.yaml
 fi
